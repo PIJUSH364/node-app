@@ -2,13 +2,28 @@ const express = require('express');
 const morgan = require('morgan');
 const app = express();
 const PORT = 3000;
+const os = require('os');
 
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Endpoint 1: GET /
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Node App!' });
+    const networkInterfaces = os.networkInterfaces();
+
+    let systemIP = 'IP not found';
+    for (const interfaceName in networkInterfaces) {
+        const iface = networkInterfaces[interfaceName];
+        for (const alias of iface) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+                systemIP = alias.address;
+                break;
+            }
+        }
+        if (systemIP !== 'IP not found') break;
+    }
+
+    console.log(`System IP: ${systemIP}`);
+    res.json({ message: 'Welcome to Node App!', systemIP });
 });
 
 // Endpoint 2: POST /users
