@@ -17,6 +17,8 @@ const s3 = new S3Client({
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     },
+    requestChecksumCalculation: "when_required",   // ← add this
+    responseChecksumValidation: "when_required",   // ← add this
 });
 
 const BUCKET = process.env.S3_BUCKET;
@@ -114,16 +116,11 @@ app.get("/photos", async (req, res) => {
     const listCmd = new ListObjectsV2Command({ Bucket: BUCKET, Prefix: "photos/" });
     const { Contents = [] } = await s3.send(listCmd);
 
-    const photos = await Promise.all(
-        Contents.map(async (obj) => {
-            const url = await getSignedUrl(
-                s3,
-                new GetObjectCommand({ Bucket: BUCKET, Key: obj.Key }),
-                { expiresIn: 3600 }
-            );
-            return { key: obj.Key, url, lastModified: obj.LastModified };
-        })
-    );
+    const photos = Contents.map((obj) => ({
+        key: obj.Key,
+        url: `${process.env.CDN_URL}/${obj.Key}`,  // ← CDN URL
+        lastModified: obj.LastModified,
+    }));
 
     photos.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
     res.json(photos);
